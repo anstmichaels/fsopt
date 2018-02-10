@@ -30,6 +30,44 @@ __email__ = 'amichaels@berkeley.edu'
 import numpy as np
 from math import pi
 
+def prop_fraunhofer(us, L, wlen, z):
+    """Compute diffracted field using the Fraunhofer diffraction.
+
+    Parameters
+    ----------
+    u1: numpy.array
+        2D field in source plane
+    L : float
+        Length and Width of system
+    wlen : float
+        wavelength
+    z : float
+        distance over which field is propagated
+
+    Returns
+    -------
+    numpy.array
+        The propagated complex field at location z (relative to source plane)
+    """
+    # Source plane parameters
+    M,N = us.shape
+    dxs = L/(M-1)
+
+    k = 2*pi/wlen
+
+    Lff = wlen * z / dxs
+    dxff = wlen * z / L
+
+    xff = np.linspace(-Lff/2.0, Lff/2.0, M)
+
+    Xff, Yff = np.meshgrid(xff, xff)
+
+    # do the propagation
+    c = 1.0/(1j * wlen * z) * np.exp(1j*k/(2*z) * (Xff**2+Yff**2))
+    uff = c * np.fft.ifftshift(np.fft.fft2(np.fft.fftshift(us))) * dxs**2
+
+    return uff, Lff
+
 def prop_Fresnel_TF(u1, L, wlen, z):
 	"""Compute diffracted field using the Fresnel approximation of the Rayleigh-Sommerfeld equation.
 	The Transfer Function approach is used.
