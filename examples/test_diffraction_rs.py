@@ -7,18 +7,18 @@ __email__ = 'amichaels@berkeley.edu'
 import sys
 sys.path.append('../')
 
-from diffraction import prop_Fresnel_TF
+from diffraction import prop_RS, prop_RS_inverse
 
 import numpy as np
 from math import pi
+import matplotlib.pyplot as plt
 
-L = 1e-3
-dz = 3e-3
+L = 1e-2
 N = 1000
 
 # Gaussian beam properties
 wlen = 1e-6
-w0 = 0.1e-4
+w0 = 1e-3
 k = 2*pi/wlen
 zR = pi*w0**2/wlen
 
@@ -34,17 +34,21 @@ y = np.linspace(-L/2,L/2,N)
 X,Y = np.meshgrid(x,y)
 r = np.sqrt(X**2 + Y**2)
 
-E1 = E(r, -dz)
-E2 = E(r, -dz+dz/10.0)
-E3 = E(r, 0)
+dz = 1e-2
+E1 = E(r, 0)
+E2 = E(r, dz)
 
 # starting with E1, propagate over distance dz and 2*dz and compare to theoretical fields
-E2_prop = prop_Fresnel_TF(E1, L, wlen, dz/10.0)
-E3_prop = prop_Fresnel_TF(E1, L, wlen, dz)
+E2_prop = prop_RS(E1, L, wlen, dz)
 
 # Calculate the total error in the propagated fields
-err2 = np.sum(np.abs(E2_prop - E2)**2) / np.sum(np.abs(E2)**2)
-err3 = np.sum(np.abs(E3_prop - E3)**2) / np.sum(np.abs(E3)**2)
-
+err2 = np.linalg.norm(E2_prop - E2) / np.linalg.norm(E2)
 print('The error in the first propagated field is %0.4E.' % err2)
-print('The error in the second propagated field is %0.4E.' % err3)
+
+# starting with E1, propagate over distance z1
+E1_prop = prop_RS_inverse(E2_prop, L, wlen, dz)
+
+# Calculate the total error in the propagated fields
+err1 = np.linalg.norm(E1_prop - E1) / np.linalg.norm(E1)
+print('The error in the inverse propagated field is %0.4E.' % err1)
+

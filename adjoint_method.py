@@ -49,7 +49,10 @@ class AdjointMethod(object):
         float
             The figure of merit.
         """
-        pass
+        self.update_system(self._sim, params)
+        self._sim.solve_forward()
+        return self.calc_fom()
+
 
     def gradient(self, params):
         """Calculate the gradient of the figure of merit.
