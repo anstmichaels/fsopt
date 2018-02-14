@@ -32,6 +32,10 @@ import numpy as np
 from math import pi
 from abc import ABCMeta, abstractmethod
 
+###############################################################################
+# Core Diffraction Classes
+###############################################################################
+
 class Diffraction(object):
     """Define a standard interface for implementing diffraction simulators.
 
@@ -56,8 +60,14 @@ class Diffraction(object):
 
     def __init__(self):
         self._u_in = np.array([])
+        self._grating = np.array([])
         self._u_out = []
+
+        self._u_in_adj = []
+        self._u_out_adj = []
+
         self._z_out = []
+        self._Nz = 0
 
     @property
     def u_in(self):
@@ -66,6 +76,14 @@ class Diffraction(object):
     @u_in.setter
     def u_in(self, val):
         self._u_in = val
+
+    @property
+    def grating(self):
+        return self._grating
+
+    @grating.setter
+    def grating(self, val):
+        self._grating = val
 
     @property
     def u_out(self):
@@ -77,16 +95,46 @@ class Diffraction(object):
                              ' this way.')
 
     @property
+    def u_out_adj(self):
+        return self._u_out_adj
+
+    @u_out_adj.setter
+    def u_out_adj(self, value):
+        raise AttributeError('Diffraction.u_out_adj cannot be modified directly in' \
+                             ' this way.')
+
+    @property
+    def u_in_adj(self):
+        return self._u_in_adj
+
+    @u_in_adj.setter
+    def u_in_adj(self, value):
+        self._u_in_adj = value
+
+    @property
+    def Nz(self):
+        return self._Nz
+
+    @Nz.setter
+    def Nz(self, value):
+        raise AttributeError('Diffraction.Nz cannot be modified directly in' \
+                             ' this way.')
+
+    @property
     def z_out(self):
         return self._z_out
 
     @z_out.setter
     def z_out(self, val):
-        if(len(val) == 0):
+        Nz = len(val)
+        self._Nz = Nz
+        if(Nz == 0):
             raise ValueError('At least one output plane position must be' \
                              ' specified.')
         else:
             self._z_out = val
+            self._u_out = [np.zeros(self._uin.shape, dtype=np.complex128) \
+                          for i in range(len(val))]
 
     @abstractmethod
     def propagate(self):
@@ -129,24 +177,85 @@ class DiffractionFF(Diffraction):
     L_out : list of float
         The list of widths of the output planes
     """
-    def __init__(self, L, dx, wavelength):
+    def __init__(self, L, N, wavelength):
+        super(DiffractionFF, self).__init__()
+
         self._L = L
-        self._dx = dx
+        self._dx = L/N
         self._wlen = wavelength
 
-        self._N = int(L/dx)
-        self._uin = np.zeros(N,N, dtype=np.complex128)
+        self._N = N
+        self._u_in = np.zeros((N,N), dtype=np.complex128)
+        self._grating = np.zeros((N,N), dtype=np.complex128)
         self._z_out = []
         self._u_out = []
 
         self._dx_out = []
         self._L_out = []
 
+    @property
+    def z_out(self):
+        return self._z_out
+
+    @z_out.setter
+    def z_out(self, val):
+        Nz = len(val)
+        self._Nz = Nz
+        if(Nz == 0):
+            raise ValueError('At least one output plane position must be' \
+                             ' specified.')
+        else:
+            self._z_out = val
+            self._u_out = [np.zeros(self._u_in.shape, dtype=np.complex128) \
+                          for i in range(Nz)]
+            self._u_out_adj = [np.zeros(self._u_in.shape, dtype=np.complex128) \
+                              for i in range(Nz)]
+            self._dx_out = [0.0 for i in range(Nz)]
+            self._L_out = [0.0 for i in range(Nz)]
+
     def propagate(self):
-        pass
+        """Propagate the input field through a diffraction grating to the
+        output planes.
+
+        Fraunhofer ("far field") diffraction is used to do the propagation. As
+        a result, the lengths of the output planes depend on their distance
+        from the input plane
+
+        Returns
+        -------
+        list, list
+            Two lists containing the ouput fields and the output plane sizes.
+            These results can also be accessed through the DiffractionFF.u_out
+            and DiffractionFF.L_out attributes. There is one output field for
+            each output z position.
+        """
+        u0 = self._u_in * self._grating
+
+        for i in range(self._Nz):
+            uout, Lout = prop_fraunhofer(u0, self._L, self._wlen, self._z_out[i])
+            self._u_out[i] = uout
+            self._L_out[i] = Lout
+
+        return self._u_out, self._L_out
 
     def adjoint_propagate(self):
-        pass
+        """Compute the adjoint fields by propagating the provided set of input
+        adjoint field sources.
+
+        Returns
+        -------
+        list
+            The list containing the output adjoint fields. There is one output
+            adjoint field for each input adjoint field.
+        """
+        for i in range(self._Nz):
+            uout_adj, Lout_adj = prop_fraunhofer_adjoint(self._u_in_adj[i],
+                                                         self._L_out[i],
+                                                         self._wlen,
+                                                         self._z_out[i])
+            self._u_out_adj[i] = uout_adj
+
+        return self._u_out_adj
 
 class DiffractionRS(Diffraction):
     """Simulate the illumination of a diffraction grating using
@@ -180,21 +289,63 @@ class DiffractionRS(Diffraction):
     z_out : list of float
         The list of z positions of the output planes.
     """
-    def __init__(self, L, dx, wavelength):
+    def __init__(self, L, N, wavelength):
         self._L = L
-        self._dx = dx
+        self._dx = L/N
         self._wlen = wavelength
 
-        self._N = int(L/dx)
-        self._uin = np.zeros(N,N, dtype=np.complex128)
+        self._N = N
+        self._uin = np.zeros((N,N), dtype=np.complex128)
         self._z_out = []
         self._u_out = []
 
     def propagate(self):
-        pass
+        """Propagate the input field through a diffraction grating to the
+        output planes.
+
+        Rayleigh-Sommerfeld propagation is used. This is the most accurate
+        method of scalar diffraction.
+
+        Returns
+        -------
+        list
+            The list of output scalar fields propagated from the input plane.
+            This result can also be accessed via the DiffractionRS.u_out
+            attribute. There is one output field for each z position.
+        """
+        u0 = self._u_in * self._grating
+
+        for i in range(self._Nz):
+            uout = prop_RS(u0, self._L, self._wlen, self._z_out[i])
+            self._u_out[i] = uout
+
+        return self._u_out
 
     def adjoint_propagate(self):
-        pass
+        """Compute the adjoint fields by propagating the provided set of input
+        adjoint field sources.
+
+        This is the adjoint of Rayleigh-Sommerfeld propagation.
+
+        Returns
+        -------
+        list
+            The list containing the output adjoint fields. There is one output
+            adjoint field for each input adjoint field. This result can also be
+            accessed via the DiffractionRS.u_out_adj attribute.
+        """
+        for i in range(self._Nz):
+            uout_adj, Lout_adj = prop_RS_adjoint(self._u_in_adj[i],
+                                                 self._L,
+                                                 self._wlen,
+                                                 self._z_out[i])
+            self._u_out_adj[i] = uout_adj
+
+        return self._u_out_adj
+
+###############################################################################
+# Stand-Alone Diffraction Functions
+###############################################################################
 
 def prop_fraunhofer(us, L, wlen, z):
     """Compute diffracted field using the Fraunhofer diffraction.
