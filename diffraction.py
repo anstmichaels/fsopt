@@ -194,6 +194,23 @@ class DiffractionFF(Diffraction):
         self._L_out = []
 
     @property
+    def N(self):
+        return self._N
+
+    @N.setter
+    def N(self, newN):
+        self._N = newN
+
+    @property
+    def L_out(self):
+        return self._L_out
+
+    @L_out.setter
+    def L_out(self, newL):
+        raise AttributeError('DiffractionFF.L_out cannot be modified in this' \
+                             ' way.')
+
+    @property
     def z_out(self):
         return self._z_out
 
@@ -299,6 +316,14 @@ class DiffractionRS(Diffraction):
         self._z_out = []
         self._u_out = []
 
+    @property
+    def N(self):
+        return self._N
+
+    @N.setter
+    def N(self, newN):
+        self._N = newN
+
     def propagate(self):
         """Propagate the input field through a diffraction grating to the
         output planes.
@@ -335,7 +360,7 @@ class DiffractionRS(Diffraction):
             accessed via the DiffractionRS.u_out_adj attribute.
         """
         for i in range(self._Nz):
-            uout_adj, Lout_adj = prop_RS_adjoint(self._u_in_adj[i],
+            uout_adj = prop_RS_adjoint(self._u_in_adj[i],
                                                  self._L,
                                                  self._wlen,
                                                  self._z_out[i])
@@ -488,6 +513,8 @@ def prop_RS(u1, L, wlen, z):
     # Define frequency domain
     fx = np.arange(-1/(2*dx), 1/(2*dx), 1.0/L)
     FX, FY = np.meshgrid(fx, fx)
+    FX = FX.astype(np.complex128)
+    FY = FY.astype(np.complex128)
 
     # Convolution kernel in frequency domain
     H = np.exp(1j*k*z*np.sqrt(1-(wlen*FX)**2-(wlen*FY)**2))
@@ -581,6 +608,70 @@ def prop_RS_inverse(u2, L, wlen, z):
     u1 = np.fft.ifftshift(np.fft.ifft2(U1));
 
     return u1
+
+def prop_kirchhoff(XS, YS, XF, YF, zf):
+    pass
+
+#####################################################################################
+# Miscellaneous useful functions
+#####################################################################################
+
+def gaussian_beam(x, y, z, x0, y0, w0, wlen, M2=1.0):
+	"""Generate a slice of a Gaussian beam.
+
+	The Guassian beam has the form
+
+	..math:: A * \frac{w_0}{w(z_0)}e^{-\frac{ (x-x_0)^2 + (y-y_0)^2}{ w(z_0)^2}} e^{-i (k z_0 + k r^2 / 2 R(z_0) - \psi(z_0))
+
+	Notes
+	-----
+	1. x and y must have the same shape
+
+	2. The beam is assumed to propagate along the z direction.
+
+	Parameters
+	----------
+	x : numpy.array
+		The x coordinates where the Gaussian beam is evaluated
+	y : numpy.array
+		The y coordinates where the Gaussian beam is evaluated
+	z : numpy.array
+		The z position where the Gaussian beam is evaluated.
+	x0 : float
+		x coordinate of center
+	y0 : float
+		y coordinate of center
+	w0 : float
+		waist size of beam
+	wlen : float
+		wavelength of beam
+	M2 : float
+		M^2 value for modelling non-ideal beam
+
+	Returns
+	-------
+	numpy.array
+		Gaussian beam values at specified x,y coordinates
+	"""
+	k = 2*pi/wlen
+	zR = pi*w0**2/wlen/M2
+
+	w = lambda zz : w0*np.sqrt(1 + (zz/zR)**2)
+	invR = lambda zz : z / (zz**2 + zR**2)
+	psi = lambda zz : np.arctan(zz/zR)
+
+	if(w0 == 0.0):
+		return np.zeros(x.shape)
+
+	# calculate gaussian beam in three different planes: z = -dz, z = 0, z = dz
+	E = lambda r,z : w0/w(z) * np.exp(-r**2/w(z)**2) * np.exp(-1j*(k*z + k*r**2/2.0*invR(z)-psi(z)))
+
+	r = np.sqrt((x-x0)**2 + (y-y0)**2)
+
+	Eout = E(r, z)
+
+	return Eout
+
 
 def phase_cmap():
     """Define a matplotlib colormap that is useful for plotting phase.

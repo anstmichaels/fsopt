@@ -41,6 +41,11 @@ E2 = E(r, dz)
 # starting with E1, propagate over distance dz and 2*dz and compare to theoretical fields
 E2_prop = prop_RS(E1, L, wlen, dz)
 
+f = plt.figure()
+ax = f.add_subplot(111)
+ax.imshow(np.abs(E2_prop))
+plt.show()
+
 # Calculate the total error in the propagated fields
 err2 = np.linalg.norm(E2_prop - E2) / np.linalg.norm(E2)
 print('The error in the first propagated field is %0.4E.' % err2)
