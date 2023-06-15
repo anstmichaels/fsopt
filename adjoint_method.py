@@ -30,7 +30,7 @@ class AdjointMethod(object):
 
     @sim.setter
     def sim(self, new_sim):
-        if(new_sim == None):
+        if new_sim is None:
             raise ValueError('New simulation object cannot be None...')
         else:
             self._sim = new_sim

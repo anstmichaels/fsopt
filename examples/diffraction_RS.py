@@ -1,6 +1,7 @@
 """Demonstrate how to use the DiffractionFF class
 """
 
+
 __author__ = 'Andrew Michaels'
 __email__ = 'amichaels@berkeley.edu'
 
@@ -55,7 +56,7 @@ u_out = d.propagate()
 
 # aggregate the input and outputs for plotting
 u_plot = [d.u_in*d.grating] + u_out
-L_plot = [L for i in range(4)]
+L_plot = [L for _ in range(4)]
 
 # plot the results
 f = plt.figure()
