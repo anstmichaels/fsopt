@@ -68,7 +68,7 @@ d.u_in = diff.gaussian_beam(X, Y, 0, L/2, L/2, L/2, wlen)
 d.z_out = [1.0]
 
 am = AMFocuser(d)
-params = np.zeros(N*N)
+params = np.zeros(N**2)
 
 am.check_gradient(param, skip=100000)
 

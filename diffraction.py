@@ -128,13 +128,13 @@ class Diffraction(object):
     def z_out(self, val):
         Nz = len(val)
         self._Nz = Nz
-        if(Nz == 0):
+        if (Nz == 0):
             raise ValueError('At least one output plane position must be' \
-                             ' specified.')
-        else:
-            self._z_out = val
-            self._u_out = [np.zeros(self._uin.shape, dtype=np.complex128) \
-                          for i in range(len(val))]
+                                 ' specified.')
+        self._z_out = val
+        self._u_out = [
+            np.zeros(self._uin.shape, dtype=np.complex128) for _ in range(len(val))
+        ]
 
     @abstractmethod
     def propagate(self):
@@ -218,17 +218,18 @@ class DiffractionFF(Diffraction):
     def z_out(self, val):
         Nz = len(val)
         self._Nz = Nz
-        if(Nz == 0):
+        if (Nz == 0):
             raise ValueError('At least one output plane position must be' \
-                             ' specified.')
-        else:
-            self._z_out = val
-            self._u_out = [np.zeros(self._u_in.shape, dtype=np.complex128) \
-                          for i in range(Nz)]
-            self._u_out_adj = [np.zeros(self._u_in.shape, dtype=np.complex128) \
-                              for i in range(Nz)]
-            self._dx_out = [0.0 for i in range(Nz)]
-            self._L_out = [0.0 for i in range(Nz)]
+                                 ' specified.')
+        self._z_out = val
+        self._u_out = [
+            np.zeros(self._u_in.shape, dtype=np.complex128) for _ in range(Nz)
+        ]
+        self._u_out_adj = [
+            np.zeros(self._u_in.shape, dtype=np.complex128) for _ in range(Nz)
+        ]
+        self._dx_out = [0.0 for _ in range(Nz)]
+        self._L_out = [0.0 for _ in range(Nz)]
 
     def propagate(self):
         """Propagate the input field through a diffraction grating to the
@@ -523,9 +524,7 @@ def prop_RS(u1, L, wlen, z):
     # Convolve by multiplying in frequency domain
     U1 = np.fft.fft2(np.fft.fftshift(u1));
     U2 = H*U1;
-    u2 = np.fft.ifftshift(np.fft.ifft2(U2));
-
-    return u2
+    return np.fft.ifftshift(np.fft.ifft2(U2))
 
 def prop_RS_adjoint(u1, L, wlen, z):
     """Perform a transposed Rayleighy-Sommerfeld propagation.  This is needed for gradient calculations
@@ -566,9 +565,7 @@ def prop_RS_adjoint(u1, L, wlen, z):
     U1 = np.fft.ifft2(np.fft.ifftshift(u1));
     U2 = H*U1;
 
-    u2 = np.fft.fftshift(np.fft.fft2(U2));
-
-    return u2
+    return np.fft.fftshift(np.fft.fft2(U2))
 
 def prop_RS_inverse(u2, L, wlen, z):
     """Compute the inverse of the Rayleigh-Sommerfeld propagation.
@@ -605,9 +602,7 @@ def prop_RS_inverse(u2, L, wlen, z):
     # convolve
     U2 = np.fft.fft2(np.fft.fftshift(u2));
     U1 = U2/H;
-    u1 = np.fft.ifftshift(np.fft.ifft2(U1));
-
-    return u1
+    return np.fft.ifftshift(np.fft.ifft2(U1))
 
 def prop_kirchhoff(XS, YS, XF, YF, zf):
     pass
@@ -617,7 +612,7 @@ def prop_kirchhoff(XS, YS, XF, YF, zf):
 #####################################################################################
 
 def gaussian_beam(x, y, z, x0, y0, w0, wlen, M2=1.0):
-	"""Generate a slice of a Gaussian beam.
+    """Generate a slice of a Gaussian beam.
 
 	The Guassian beam has the form
 
@@ -653,24 +648,22 @@ def gaussian_beam(x, y, z, x0, y0, w0, wlen, M2=1.0):
 	numpy.array
 		Gaussian beam values at specified x,y coordinates
 	"""
-	k = 2*pi/wlen
-	zR = pi*w0**2/wlen/M2
+    k = 2*pi/wlen
+    zR = pi*w0**2/wlen/M2
 
-	w = lambda zz : w0*np.sqrt(1 + (zz/zR)**2)
-	invR = lambda zz : z / (zz**2 + zR**2)
-	psi = lambda zz : np.arctan(zz/zR)
+    w = lambda zz : w0*np.sqrt(1 + (zz/zR)**2)
+    invR = lambda zz : z / (zz**2 + zR**2)
+    psi = lambda zz : np.arctan(zz/zR)
 
-	if(w0 == 0.0):
-		return np.zeros(x.shape)
+    if(w0 == 0.0):
+    	return np.zeros(x.shape)
 
-	# calculate gaussian beam in three different planes: z = -dz, z = 0, z = dz
-	E = lambda r,z : w0/w(z) * np.exp(-r**2/w(z)**2) * np.exp(-1j*(k*z + k*r**2/2.0*invR(z)-psi(z)))
+    # calculate gaussian beam in three different planes: z = -dz, z = 0, z = dz
+    E = lambda r,z : w0/w(z) * np.exp(-r**2/w(z)**2) * np.exp(-1j*(k*z + k*r**2/2.0*invR(z)-psi(z)))
 
-	r = np.sqrt((x-x0)**2 + (y-y0)**2)
+    r = np.sqrt((x-x0)**2 + (y-y0)**2)
 
-	Eout = E(r, z)
-
-	return Eout
+    return E(r, z)
 
 
 def phase_cmap():
